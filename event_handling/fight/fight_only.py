@@ -137,15 +137,15 @@ def detector_task(
             middle_lock = True
             execute_tactic_event.clear()  # 阻塞战斗，如果有的话
             logger.debug(f"进入连携技模式")
-            for i in range(3):
-                if waiting_optimization(1.5):
-                    mouse_press("left", 0.05)
-                    mouse_press("left", 0.05)
-                logger.debug(f"退出连携技模式")
+            while waiting_optimization(1.5):
+                mouse_press("left", 0.05)
+                mouse_press("left", 0.05)
+            logger.debug(f"退出连携技模式")
 
+            # 击破状态切换为主c输出
             if (
                 zero_cfg.carry["char"] != "默认"
-                and zero_cfg.carry["char"] in fight_logic_daily.char_icons
+                and zero_cfg.carry["char"] in fight_logic_daily.char_icons  # 保证正确设置
             ):
                 for i in range(3):
                     if run_flag.is_set():
@@ -161,7 +161,6 @@ def detector_task(
                     if current_character() == zero_cfg.carry["char"]:
                         break
                     time.sleep(0.2)
-
             execute_tactic_event.set()  # 释放战斗
         # 终结技检测优先于检测光效
         if detector_task_event.is_set():
@@ -246,6 +245,7 @@ def technique_detection(
     execute_tactic_event: threading.Event,
 ):
     while run_flag.is_set():
+        execute_tactic_event.wait()
         # 检测在场角色
         cur_character = current_character()
         # 判断终结技充满，并选人释放，默认直接释放
