@@ -137,7 +137,7 @@ def detector_task(
             middle_lock = True
             execute_tactic_event.clear()  # 阻塞战斗，如果有的话
             logger.debug(f"进入连携技模式")
-            while waiting_optimization(1.5):
+            while waiting_optimization(1.2):
                 mouse_press("left", 0.05)
                 mouse_press("left", 0.05)
             logger.debug(f"退出连携技模式")
@@ -181,10 +181,6 @@ def fight_login(
         threshold = 0.9
         # 检测在场角色
         cur_character = current_character(threshold)
-        while cur_character == "默认":  # 未找到角色头像(可能被其他动画挡住了),等待0.2s
-            time.sleep(0.2)
-            threshold = threshold - 0.1
-            cur_character = current_character(threshold)
         logger.debug(f"进入{cur_character}战斗模式")
 
         # 获取当前角色战斗逻辑
@@ -234,10 +230,6 @@ def technique_detection(
         execute_tactic_event.wait()
         # 检测在场角色
         cur_character = current_character(threshold)
-        while cur_character == "默认":  # 未找到角色头像(可能被其他动画挡住了),等待0.2s
-            time.sleep(0.2)
-            threshold = threshold - 0.1
-            cur_character = current_character(threshold)
         # 判断终结技充满，并选人释放，默认直接释放
         if (
             cur_character == zero_cfg.carry["char"]  # 判断为指定角色
@@ -249,18 +241,21 @@ def technique_detection(
             time.sleep(3)
 
 
-def current_character(threshold=0.9):
+def current_character(threshold = 0.9):
     """
     获取当前角色
     """
     img = screenshot()
     for chara, chara_icon in fight_logic_daily.char_icons.items():
         img_position = find_template(
-            img, chara_icon, (0, 0, 200, 120), threshold=threshold
+            img, chara_icon, (0, 0, 200, 120), threshold = threshold
         )
         if img_position is not None:  # 找到角色头像
             return chara
-    return "默认"  # 未找到角色头像
+
+    time.sleep(0.2)
+    threshold = max(0.1, threshold - 0.1)
+    return current_character(threshold)
 
 
 # 战斗逻辑

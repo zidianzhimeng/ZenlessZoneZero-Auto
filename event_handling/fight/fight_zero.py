@@ -130,6 +130,7 @@ def detector_task(
     execute_tactic_event: threading.Event,
     detector_task_event: threading.Event,
 ):
+    global middle_lock
     """
     检测光效
     run_flag: 是否允许继续运行战斗
@@ -141,16 +142,15 @@ def detector_task(
         results = detector.detect_light_effects(img)
         combo_attack = combo_detect(img)
         # 连携技和黄光回切人，给战斗一个阻塞来切换战斗逻辑
-        global middle_lock
-        middle_lock = False  # 锁定鼠标中键
         if combo_attack:
-            middle_lock = True
+            middle_lock = True  # 锁定鼠标中键
             execute_tactic_event.clear()  # 阻塞战斗，如果有的话
             logger.debug(f"进入连携技模式")
             while waiting_optimization(1.5):
                 mouse_press("left", 0.05)
                 mouse_press("left", 0.05)
-            logger.debug(f"退出连携技模式")
+
+            middle_lock = False
             execute_tactic_event.set()  # 释放战斗
         # 终结技检测优先于检测光效
         if detector_task_event.is_set():
