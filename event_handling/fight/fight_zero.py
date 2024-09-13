@@ -188,13 +188,8 @@ def fight_login(
         fighting_flag.wait()  # 是否继续战斗
         execute_tactic_event.wait()  # 等待光效检测结束
         mouse_press("middle", 0.05)
-        threshold = 0.9
         # 检测在场角色
-        cur_character = current_character(threshold)
-        while cur_character == "默认":  # 未找到角色头像(可能被其他动画挡住了),等待0.2s
-            time.sleep(0.2)
-            threshold = threshold - 0.1
-            cur_character = current_character(threshold)
+        cur_character = current_character()
         logger.debug(f"进入{cur_character}战斗模式")
 
         # 获取当前角色战斗逻辑
@@ -240,14 +235,9 @@ def technique_detection(
     execute_tactic_event: threading.Event,
 ):
     while run_flag.is_set():
-        threshold = 0.9
         execute_tactic_event.wait()
         # 检测在场角色
-        cur_character = current_character(threshold)
-        while cur_character == "默认":  # 未找到角色头像(可能被其他动画挡住了),等待0.2s
-            time.sleep(0.2)
-            threshold = threshold - 0.1
-            cur_character = current_character(threshold)
+        cur_character = current_character()
         # 判断终结技充满，并选人释放，默认直接释放
         if (
             cur_character == zero_cfg.carry["char"]  # 判断为指定角色
@@ -268,9 +258,15 @@ def current_character(threshold=0.9):
         img_position = find_template(
             img, chara_icon, (0, 0, 200, 120), threshold=threshold
         )
-        if img_position is not None:  # 找到角色头像
-            return chara
-    return "默认"  # 未找到角色头像
+        if img_position:
+            return chara  # 直接返回找到的角色
+
+        # 递归调用，降低阈值并重试
+        time.sleep(0.1)
+        new_threshold = max(0.1, threshold - 0.1)  # 确保阈值不低于0.1
+        return current_character(new_threshold)
+
+    return "默认"
 
 
 def calc_angle(x, y, w, h):
