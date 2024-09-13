@@ -141,33 +141,6 @@ def detector_task(
                 mouse_press("left", 0.05)
                 mouse_press("left", 0.05)
             logger.debug(f"退出连携技模式")
-
-            # 击破状态切换为主c输出
-            if (
-                zero_cfg.carry["char"] != "默认"
-                and zero_cfg.carry["char"]
-                in fight_logic_daily.char_icons  # 保证正确设置
-            ):
-                for i in range(3):
-                    print("切换角色")
-                    if run_flag.is_set():
-                        character_list = list(fight_logic_daily.char_icons.keys())
-                        current_character_index = character_list.index(
-                            current_character()
-                        )
-                        print(f"当前角色索引：{current_character_index}")
-                        carry_index = character_list.index(zero_cfg.carry["char"])
-                        print(f"主c索引：{carry_index}")
-                        if carry_index == current_character_index + 1:
-                            key_press("space", 0.1)
-                            print("切换")
-                        elif carry_index == current_character_index - 1:
-                            key_press("c", 0.1)
-                            print("切换")
-                    if current_character() == zero_cfg.carry["char"]:
-                        break
-                    time.sleep(0.2)
-                print("切换结束")
             execute_tactic_event.set()  # 释放战斗
         # 终结技检测优先于检测光效
         if detector_task_event.is_set():
@@ -205,8 +178,13 @@ def fight_login(
         fighting_flag.wait()  # 是否继续战斗
         execute_tactic_event.wait()
         mouse_press("middle", 0.05)  # 等待光效检测结束
+        threshold = 0.9
         # 检测在场角色
-        cur_character = current_character()
+        cur_character = current_character(threshold)
+        while cur_character == "默认":  # 未找到角色头像(可能被其他动画挡住了),等待0.2s
+            time.sleep(0.2)
+            threshold = threshold - 0.1
+            cur_character = current_character(threshold)
         logger.debug(f"进入{cur_character}战斗模式")
 
         # 获取当前角色战斗逻辑
@@ -252,9 +230,14 @@ def technique_detection(
     execute_tactic_event: threading.Event,
 ):
     while run_flag.is_set():
+        threshold = 0.9
         execute_tactic_event.wait()
         # 检测在场角色
-        cur_character = current_character()
+        cur_character = current_character(threshold)
+        while cur_character == "默认":  # 未找到角色头像(可能被其他动画挡住了),等待0.2s
+            time.sleep(0.2)
+            threshold = threshold - 0.1
+            cur_character = current_character(threshold)
         # 判断终结技充满，并选人释放，默认直接释放
         if (
             cur_character == zero_cfg.carry["char"]  # 判断为指定角色
@@ -275,20 +258,12 @@ def current_character(threshold=0.9):
         img_position = find_template(
             img, chara_icon, (0, 0, 200, 120), threshold=threshold
         )
-        if img_position:
-            return chara # 直接返回找到的角色
-        chara = "默认"
-
-    while chara == "默认":
-        # # 递归调用，降低阈值并重试
-        time.sleep(0.2)
-        threshold = threshold - 0.1  # 确保阈值不低于0.1
-        chara = current_character(threshold)
-    return chara
-
-    # 战斗逻辑
+        if img_position is not None:  # 找到角色头像
+            return chara
+    return "默认"  # 未找到角色头像
 
 
+# 战斗逻辑
 @task.page(name="战斗中", target_texts=["^Space$"])
 def action():
     # 运行控制
